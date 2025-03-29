@@ -59,6 +59,7 @@ async function main() {
   let col = 0;
   const columnCount = Object.keys(months).length;
   const boxes = [];
+  const originalMaterials = new Map();
 
   for (const [month, days] of Object.entries(months)) {
     const firstDay = days.find(d => d.date.getDate() === 1);
@@ -93,6 +94,7 @@ async function main() {
   const mouse = new THREE.Vector2();
   let mouseX = 0;
   let mouseY = 0;
+  let highlighted = null;
 
   window.addEventListener('mousemove', event => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -113,6 +115,11 @@ async function main() {
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(boxes);
 
+    if (highlighted) {
+      highlighted.material.emissive = new THREE.Color(0x000000);
+      highlighted = null;
+    }
+
     if (intersects.length > 0) {
       const obj = intersects[0].object;
       const { date, count } = obj.userData;
@@ -120,6 +127,9 @@ async function main() {
       tooltip.style.left = `${mouseX + 10}px`;
       tooltip.style.top = `${mouseY + 10}px`;
       tooltip.style.display = 'block';
+
+      obj.material.emissive = new THREE.Color(0xffffff);
+      highlighted = obj;
     } else {
       tooltip.style.display = 'none';
     }
