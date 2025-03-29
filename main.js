@@ -44,6 +44,10 @@ async function main() {
   light.position.set(1, 2, 3);
   scene.add(light);
 
+  // Subtle ambient light for glow effect
+  const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft white light
+  scene.add(ambientLight);
+
   const getColor = count => {
     if (count === 0) return 0xebedf0;
     if (count < 10) return 0xc6e48b;
