@@ -29,7 +29,7 @@ async function main() {
     0.1,
     1000
   );
-  camera.position.set(-20, 40, 80);
+  camera.position.set(0, 15, 15);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -63,16 +63,16 @@ async function main() {
       const mat = new THREE.MeshLambertMaterial({ color: getColor(day.count) });
       const box = new THREE.Mesh(boxGeo, mat);
       box.scale.set(0.9, height, 0.9);
-      box.position.set(col * 1.2, height / 2, weekday * 1.2);
+      box.position.set(col * 1.0, height / 2, weekday * 1.0);
       scene.add(box);
     });
     col++;
   }
 
   // Center controls on graph midpoint
-  const centerX = ((columnCount - 1) * 1.2) / 2;
+  const centerX = ((columnCount - 1) * 1.0) / 2;
   const centerY = 0;
-  const centerZ = (6 * 1.2) / 2;
+  const centerZ = (6 * 1.0) / 2;
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
