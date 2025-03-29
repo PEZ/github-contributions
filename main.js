@@ -59,7 +59,7 @@ async function main() {
   let col = 0;
   const columnCount = Object.keys(months).length;
   const boxes = [];
-  const originalMaterials = new Map();
+  let outline = null;
 
   for (const [month, days] of Object.entries(months)) {
     const firstDay = days.find(d => d.date.getDate() === 1);
@@ -90,11 +90,61 @@ async function main() {
   tooltip.style.display = 'none';
   document.body.appendChild(tooltip);
 
+  const toggle = document.createElement('button');
+  toggle.textContent = '🔇 Enable Sound';
+  toggle.style.position = 'absolute';
+  toggle.style.top = '10px';
+  toggle.style.right = '10px';
+  toggle.style.zIndex = '1';
+  toggle.style.padding = '6px 10px';
+  toggle.style.fontSize = '14px';
+  toggle.style.background = '#222';
+  toggle.style.color = 'white';
+  toggle.style.border = '1px solid #444';
+  toggle.style.borderRadius = '4px';
+  toggle.style.cursor = 'pointer';
+  document.body.appendChild(toggle);
+
+  let soundEnabled = false;
+  toggle.addEventListener('click', async () => {
+    await audioCtx.resume();
+    soundEnabled = !soundEnabled;
+    toggle.textContent = soundEnabled ? '🔔 Sound On' : '🔇 Enable Sound';
+  });
+
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   let mouseX = 0;
   let mouseY = 0;
-  let highlighted = null;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let lastPlayedTime = 0;
+
+  function playTone(count) {
+    if (!soundEnabled) return;
+
+    const now = audioCtx.currentTime;
+    if (now - lastPlayedTime < 0.1) return; // prevent overlap
+    lastPlayedTime = now;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const baseFreq = 200;
+    const maxFreq = 1200;
+    const freq = baseFreq + (count / 60) * (maxFreq - baseFreq);
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.6);
+  }
 
   window.addEventListener('mousemove', event => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -115,9 +165,9 @@ async function main() {
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(boxes);
 
-    if (highlighted) {
-      highlighted.material.emissive = new THREE.Color(0x000000);
-      highlighted = null;
+    if (outline) {
+      scene.remove(outline);
+      outline = null;
     }
 
     if (intersects.length > 0) {
@@ -128,8 +178,14 @@ async function main() {
       tooltip.style.top = `${mouseY + 10}px`;
       tooltip.style.display = 'block';
 
-      obj.material.emissive = new THREE.Color(0xffffff);
-      highlighted = obj;
+      const edges = new THREE.EdgesGeometry(obj.geometry);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+      outline = new THREE.LineSegments(edges, lineMat);
+      outline.position.copy(obj.position);
+      outline.scale.copy(obj.scale);
+      scene.add(outline);
+
+      playTone(count);
     } else {
       tooltip.style.display = 'none';
     }
