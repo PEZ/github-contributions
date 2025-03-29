@@ -159,6 +159,8 @@ async function main() {
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
+  let lastHovered = null;
+
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
@@ -172,8 +174,14 @@ async function main() {
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
-      const { date, count } = obj.userData;
-      tooltip.textContent = `${date}: ${count}`;
+      const userData = obj.userData;
+
+      if (lastHovered !== obj) {
+        playTone(userData.count);
+        lastHovered = obj;
+      }
+
+      tooltip.textContent = `${userData.date}: ${userData.count}`;
       tooltip.style.left = `${mouseX + 10}px`;
       tooltip.style.top = `${mouseY + 10}px`;
       tooltip.style.display = 'block';
@@ -184,10 +192,9 @@ async function main() {
       outline.position.copy(obj.position);
       outline.scale.copy(obj.scale);
       scene.add(outline);
-
-      playTone(count);
     } else {
       tooltip.style.display = 'none';
+      lastHovered = null;
     }
 
     renderer.render(scene, camera);
