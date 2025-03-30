@@ -57,29 +57,33 @@ async function main() {
   };
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  const monthKeys = Object.keys(months).sort();
+  const monthKeys = Object.keys(months);
   const boxes = [];
   let outline = null;
 
-  let currentZOffset = 0;
-  const monthGap = 0.2;
-  let totalZSpan = 0;
+  const spacing = -0.25;
+  const monthOffsets = [];
+  let cumulativeOffset = 0;
 
   for (const month of monthKeys) {
-    const days = months[month];
-    if (!days || days.length === 0) continue;
-
-    const year = parseInt(month.split('-')[0]);
-    const monthNum = parseInt(month.split('-')[1]) - 1;
-
-    const firstDay = new Date(year, monthNum, 1);
+    const [year, m] = month.split('-').map(Number);
+    const firstDay = new Date(year, m - 1, 1);
     const startWeekday = firstDay.getDay();
+    const totalDays = new Date(year, m, 0).getDate();
+    const numWeeks = Math.ceil((startWeekday + totalDays) / 7);
+    monthOffsets.push(cumulativeOffset);
+    cumulativeOffset += numWeeks + spacing;
+  }
 
-    let maxWeekIndex = 0;
-    const lastDayData = days[days.length - 1];
-    const lastDayOfMonthDate = lastDayData.date.getDate();
-    maxWeekIndex = Math.floor((startWeekday + lastDayOfMonthDate - 1) / 7);
-    const monthZSpan = maxWeekIndex + 1;
+  monthKeys.forEach((month, row) => {
+    const days = months[month];
+    const [year, m] = month.split('-').map(Number);
+    const firstDay = new Date(year, m - 1, 1);
+    const startWeekday = firstDay.getDay();
+    const totalDays = new Date(year, m, 0).getDate();
+    const numWeeks = Math.ceil((startWeekday + totalDays) / 7);
+
+    const zOffset = monthOffsets[row];
 
     days.forEach(day => {
       const height = Math.max(day.count * 0.1, 0.1);
@@ -88,29 +92,22 @@ async function main() {
       box.scale.set(0.9, height, 0.9);
 
       const dayOfMonth = day.date.getDate();
-      const weekday = day.date.getDay();
+      const weekday = new Date(day.date).getDay();
       const weekIndex = Math.floor((startWeekday + dayOfMonth - 1) / 7);
 
-      box.position.set(weekday, height / 2, currentZOffset + weekIndex);
-
+      box.position.set(weekday, height / 2, zOffset + weekIndex);
       box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
       boxes.push(box);
       scene.add(box);
     });
 
-    const labelText = new Date(year, monthNum).toLocaleString('default', { month: 'short' });
+    const labelText = new Date(year, m - 1).toLocaleString('default', { month: 'short' });
     const label = new SpriteText(labelText);
     label.color = 'white';
     label.textHeight = 1.2;
-
-    label.position.set(-1.5, 0.2, currentZOffset + maxWeekIndex * 0.5);
+    label.position.set(-1.5, 0.2, zOffset + 1.5);
     scene.add(label);
-
-    currentZOffset += monthZSpan + monthGap;
-  }
-
-   totalZSpan = currentZOffset > 0 ? currentZOffset - monthGap : 0;
-
+  });
 
   const tooltip = document.createElement('div');
   tooltip.id = 'tooltip';
@@ -122,19 +119,22 @@ async function main() {
   document.body.appendChild(toggle);
 
   let soundEnabled = false;
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  let lastPlayedTime = 0;
-
   toggle.addEventListener('click', async () => {
-    if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-    }
+    await audioCtx.resume();
     soundEnabled = !soundEnabled;
     toggle.textContent = soundEnabled ? '🔔 Sound On' : '🔇 Enable Sound';
   });
 
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let mouseX = 0;
+  let mouseY = 0;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let lastPlayedTime = 0;
+
   function playTone(count) {
-    if (!soundEnabled || audioCtx.state !== 'running') return;
+    if (!soundEnabled) return;
 
     const now = audioCtx.currentTime;
     if (now - lastPlayedTime < 0.1) return;
@@ -147,7 +147,7 @@ async function main() {
     const freq = baseFreq + (count / 60) * (maxFreq - baseFreq);
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(Math.max(baseFreq, freq), now);
+    osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(0.2, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
@@ -159,11 +159,6 @@ async function main() {
     osc.stop(now + 0.6);
   }
 
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  let mouseX = 0;
-  let mouseY = 0;
-
   window.addEventListener('mousemove', event => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -171,30 +166,71 @@ async function main() {
     mouseY = event.clientY;
   });
 
-  window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  const centerZ = totalZSpan / 2;
-  const centerY = 5;
-  const centerX = 3;
+  const centerZ = cumulativeOffset * 0.5;
+  const centerY = 0;
+  const centerX = 4;
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
   let lastHovered = null;
 
+  let moveForward = false;
+  let moveBackward = false;
+  let strafeLeft = false;
+  let strafeRight = false;
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'w' || event.key === 'W') moveForward = true;
+    if (event.key === 's' || event.key === 'S') moveBackward = true;
+    if (event.key === 'a' || event.key === 'A') strafeLeft = true;
+    if (event.key === 'd' || event.key === 'D') strafeRight = true;
+  });
+
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'w' || event.key === 'W') moveForward = false;
+    if (event.key === 's' || event.key === 'S') moveBackward = false;
+    if (event.key === 'a' || event.key === 'A') strafeLeft = false;
+    if (event.key === 'd' || event.key === 'D') strafeRight = false;
+  });
+
   function animate() {
     requestAnimationFrame(animate);
+
+    const moveSpeed = 0.2;
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    dir.y = 0;
+    dir.normalize();
+
+    const strafe = new THREE.Vector3();
+    strafe.crossVectors(camera.up, dir).normalize();
+
+    if (moveForward) {
+      camera.position.addScaledVector(dir, moveSpeed);
+      controls.target.addScaledVector(dir, moveSpeed);
+    }
+
+    if (moveBackward) {
+      camera.position.addScaledVector(dir, -moveSpeed);
+      controls.target.addScaledVector(dir, -moveSpeed);
+    }
+
+    if (strafeLeft) {
+      camera.position.addScaledVector(strafe, moveSpeed);
+      controls.target.addScaledVector(strafe, moveSpeed);
+    }
+
+    if (strafeRight) {
+      camera.position.addScaledVector(strafe, -moveSpeed);
+      controls.target.addScaledVector(strafe, -moveSpeed);
+    }
+
     controls.update();
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(boxes);
 
     if (outline) {
       scene.remove(outline);
-      outline.geometry.dispose();
-      outline.material.dispose();
       outline = null;
     }
 
@@ -205,22 +241,19 @@ async function main() {
       if (lastHovered !== obj) {
         playTone(userData.count);
         lastHovered = obj;
-
-        // Create outline for hover effect
-        const edges = new THREE.EdgesGeometry(obj.geometry);
-        const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
-        outline = new THREE.LineSegments(edges, lineMat);
-        outline.position.copy(obj.position);
-        outline.scale.copy(obj.scale);
-        scene.add(outline);
       }
-
 
       tooltip.textContent = `${userData.date}: ${userData.count}`;
       tooltip.style.left = `${mouseX + 10}px`;
       tooltip.style.top = `${mouseY + 10}px`;
       tooltip.style.display = 'block';
 
+      const edges = new THREE.EdgesGeometry(obj.geometry);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+      outline = new THREE.LineSegments(edges, lineMat);
+      outline.position.copy(obj.position);
+      outline.scale.copy(obj.scale);
+      scene.add(outline);
     } else {
       tooltip.style.display = 'none';
       lastHovered = null;
@@ -232,4 +265,4 @@ async function main() {
   animate();
 }
 
-main().catch(console.error);
+main();
