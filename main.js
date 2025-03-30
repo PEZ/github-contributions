@@ -1,23 +1,28 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import * as THREE from "three";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const dataUrl = 'pez-github-contributions-2024-03-29.json';
+const dataUrl = "pez-github-contributions-2024-03-29.json";
 
 async function main() {
   const response = await fetch(dataUrl);
   const json = await response.json();
-  const weeks = json.data.user.contributionsCollection.contributionCalendar.weeks;
+  const weeks =
+    json.data.user.contributionsCollection.contributionCalendar.weeks;
 
-  const allDays = weeks.flatMap(week =>
-    week.contributionDays.map(day => ({
+  const allDays = weeks.flatMap((week) =>
+    week.contributionDays.map((day) => ({
       date: new Date(day.date),
       count: day.contributionCount,
     }))
   );
 
   const months = {};
-  allDays.forEach(day => {
-    const monthKey = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}`;
+  allDays.forEach((day) => {
+    const monthKey = `${day.date.getFullYear()}-${String(
+      day.date.getMonth() + 1
+    ).padStart(2, "0")}`;
     if (!months[monthKey]) months[monthKey] = [];
     months[monthKey].push(day);
   });
@@ -47,7 +52,7 @@ async function main() {
   const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
   scene.add(ambientLight);
 
-  const getColor = count => {
+  const getColor = (count) => {
     if (count === 0) return 0xebedf0;
     if (count < 10) return 0xc6e48b;
     if (count < 20) return 0x7bc96f;
@@ -57,45 +62,81 @@ async function main() {
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const monthKeys = Object.keys(months);
-let col = monthKeys.length - 1;
+  let col = 0;
   const columnCount = Object.keys(months).length;
   const boxes = [];
   let outline = null;
 
   for (const month of monthKeys) {
     const days = months[month];
-    const firstDay = days[0];
-    const weekdayOffset = firstDay.date.getDay();
-    const shift = weekdayOffset % 7; // Align to previous month's weekday start // shift direction for alignment
+    const year = parseInt(month.split("-")[0]);
+    const monthNum = parseInt(month.split("-")[1]) - 1;
 
-    days.forEach(day => {
+    const firstDay = new Date(year, monthNum, 1);
+    const startWeekday = firstDay.getDay();
+
+    days.forEach((day) => {
       const height = Math.max(day.count * 0.1, 0.1);
       const mat = new THREE.MeshLambertMaterial({ color: getColor(day.count) });
       const box = new THREE.Mesh(boxGeo, mat);
       box.scale.set(0.9, height, 0.9);
-      const z = day.date.getDate() + shift;
-      box.position.set(z, height / 2, col * 1.0);
-      box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
+
+      const dayOfMonth = day.date.getDate();
+      const weekday = new Date(day.date).getDay();
+      const weekIndex = Math.floor((startWeekday + dayOfMonth - 1) / 7);
+
+      box.position.set(col * 8 + weekday, height / 2, weekIndex);
+      box.userData = {
+        date: day.date.toISOString().slice(0, 10),
+        count: day.count,
+      };
       boxes.push(box);
       scene.add(box);
     });
-    col--;
-  }
 
-  const tooltip = document.createElement('div');
-  tooltip.id = 'tooltip';
+    const labelCol = col;
+    const fontLoader = new FontLoader();
+    fontLoader.load(
+      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+      (font) => {
+        const text = new Date(year, monthNum).toLocaleString("default", {
+          month: "short",
+        });
+        const textGeo = new TextGeometry(text, {
+          font,
+          size: 0.5,
+          height: 0.01,
+          curveSegments: 6,
+          bevelEnabled: false,
+        });
+        textGeo.computeBoundingBox();
+        if (textGeo.boundingBox) {
+          const textWidth =
+            textGeo.boundingBox.max.x - textGeo.boundingBox.min.x;
+          const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const textMesh = new THREE.Mesh(textGeo, textMat);
+          textMesh.position.set(labelCol * 8 + 3.5 - textWidth / 2, 2, -1);
+          scene.add(textMesh);
+        }
+      }
+    );
+
+    col++;
+  }
+  const tooltip = document.createElement("div");
+  tooltip.id = "tooltip";
   document.body.appendChild(tooltip);
 
-  const toggle = document.createElement('button');
-  toggle.id = 'sound-toggle';
-  toggle.textContent = '🔇 Enable Sound';
+  const toggle = document.createElement("button");
+  toggle.id = "sound-toggle";
+  toggle.textContent = "🔇 Enable Sound";
   document.body.appendChild(toggle);
 
   let soundEnabled = false;
-  toggle.addEventListener('click', async () => {
+  toggle.addEventListener("click", async () => {
     await audioCtx.resume();
     soundEnabled = !soundEnabled;
-    toggle.textContent = soundEnabled ? '🔔 Sound On' : '🔇 Enable Sound';
+    toggle.textContent = soundEnabled ? "🔔 Sound On" : "🔇 Enable Sound";
   });
 
   const raycaster = new THREE.Raycaster();
@@ -119,7 +160,7 @@ let col = monthKeys.length - 1;
     const maxFreq = 1200;
     const freq = baseFreq + (count / 60) * (maxFreq - baseFreq);
 
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(0.2, now);
@@ -132,7 +173,7 @@ let col = monthKeys.length - 1;
     osc.stop(now + 0.6);
   }
 
-  window.addEventListener('mousemove', event => {
+  window.addEventListener("mousemove", (event) => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     mouseX = event.clientX;
@@ -170,7 +211,7 @@ let col = monthKeys.length - 1;
       tooltip.textContent = `${userData.date}: ${userData.count}`;
       tooltip.style.left = `${mouseX + 10}px`;
       tooltip.style.top = `${mouseY + 10}px`;
-      tooltip.style.display = 'block';
+      tooltip.style.display = "block";
 
       const edges = new THREE.EdgesGeometry(obj.geometry);
       const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
@@ -179,7 +220,7 @@ let col = monthKeys.length - 1;
       outline.scale.copy(obj.scale);
       scene.add(outline);
     } else {
-      tooltip.style.display = 'none';
+      tooltip.style.display = "none";
       lastHovered = null;
     }
 
