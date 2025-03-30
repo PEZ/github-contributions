@@ -83,29 +83,12 @@ let col = monthKeys.length - 1;
   }
 
   const tooltip = document.createElement('div');
-  tooltip.style.position = 'absolute';
-  tooltip.style.background = 'rgba(0, 0, 0, 0.75)';
-  tooltip.style.color = 'white';
-  tooltip.style.padding = '4px 8px';
-  tooltip.style.borderRadius = '4px';
-  tooltip.style.pointerEvents = 'none';
-  tooltip.style.fontSize = '12px';
-  tooltip.style.display = 'none';
+  tooltip.id = 'tooltip';
   document.body.appendChild(tooltip);
 
   const toggle = document.createElement('button');
+  toggle.id = 'sound-toggle';
   toggle.textContent = '🔇 Enable Sound';
-  toggle.style.position = 'absolute';
-  toggle.style.top = '10px';
-  toggle.style.right = '10px';
-  toggle.style.zIndex = '1';
-  toggle.style.padding = '6px 10px';
-  toggle.style.fontSize = '14px';
-  toggle.style.background = '#222';
-  toggle.style.color = 'white';
-  toggle.style.border = '1px solid #444';
-  toggle.style.borderRadius = '4px';
-  toggle.style.cursor = 'pointer';
   document.body.appendChild(toggle);
 
   let soundEnabled = false;

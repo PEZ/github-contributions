@@ -1,0 +1,39 @@
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+#info {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  z-index: 1;
+}
+
+#tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  font-size: 12px;
+  display: none;
+}
+
+#sound-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: #222;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
