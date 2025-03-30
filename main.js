@@ -56,30 +56,30 @@ async function main() {
   };
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  const monthKeys = Object.keys(months).reverse();
-let col = 0;
+  const monthKeys = Object.keys(months);
+let col = monthKeys.length - 1;
   const columnCount = Object.keys(months).length;
   const boxes = [];
   let outline = null;
 
   for (const month of monthKeys) {
     const days = months[month];
-    const firstDay = days.find(d => d.date.getDate() === 1);
-    const weekdayOffset = firstDay ? firstDay.date.getDay() : 0;
-    const shift = -weekdayOffset; // Align to previous month's weekday start // shift direction for alignment
+    const firstDay = days[0];
+    const weekdayOffset = firstDay.date.getDay();
+    const shift = weekdayOffset % 7; // Align to previous month's weekday start // shift direction for alignment
 
     days.forEach(day => {
       const height = Math.max(day.count * 0.1, 0.1);
       const mat = new THREE.MeshLambertMaterial({ color: getColor(day.count) });
       const box = new THREE.Mesh(boxGeo, mat);
       box.scale.set(0.9, height, 0.9);
-      const z = (day.date.getDate() - 1 + shift) * 1.0;
+      const z = day.date.getDate() + shift;
       box.position.set(z, height / 2, col * 1.0);
       box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
       boxes.push(box);
       scene.add(box);
     });
-    col++;
+    col--;
   }
 
   const tooltip = document.createElement('div');
