@@ -58,8 +58,8 @@ async function main() {
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const monthKeys = Object.keys(months);
-  let col = 0;
-  const columnCount = Object.keys(months).length;
+  let row = 0;
+  const rowCount = monthKeys.length;
   const boxes = [];
   let outline = null;
 
@@ -81,7 +81,7 @@ async function main() {
       const weekday = new Date(day.date).getDay();
       const weekIndex = Math.floor((startWeekday + dayOfMonth - 1) / 7);
 
-      box.position.set(col * 8 + weekday, height / 2, weekIndex);
+      box.position.set(weekday, height / 2, row * 6 + weekIndex);
       box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
       boxes.push(box);
       scene.add(box);
@@ -91,10 +91,10 @@ async function main() {
     const label = new SpriteText(labelText);
     label.color = 'white';
     label.textHeight = 1.2;
-    label.position.set(col * 8 + 3.5, 0.2, -2);
+    label.position.set(-1.5, 0.2, row * 6 + 1.5);
     scene.add(label);
 
-    col++;
+    row++;
   }
 
   const tooltip = document.createElement('div');
@@ -154,9 +154,9 @@ async function main() {
     mouseY = event.clientY;
   });
 
-  const centerZ = columnCount * 0.5;
+  const centerZ = rowCount * 0.5;
   const centerY = 0;
-  const centerX = 15;
+  const centerX = 4;
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
