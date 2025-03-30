@@ -30,7 +30,6 @@ async function main() {
     0.1,
     1000
   );
-  camera.position.set(25, 35, 25);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -101,11 +100,11 @@ async function main() {
       scene.add(box);
     });
 
-    const labelText = new Date(year, m - 1).toLocaleString('default', { month: 'short' });
+    const labelText = new Date(year, m - 1).toLocaleString('default', { month: 'short', year: 'numeric' });
     const label = new SpriteText(labelText);
     label.color = 'white';
     label.textHeight = 1.2;
-    label.position.set(-1.5, 0.2, zOffset + 1.5);
+    label.position.set(-3.3, 0.2, zOffset + 1.5);
     scene.add(label);
   });
 
@@ -169,6 +168,9 @@ async function main() {
   const centerZ = cumulativeOffset * 0.5;
   const centerY = 0;
   const centerX = 4;
+
+  // Set camera in front of first month and looking down the graph
+  camera.position.set(centerX, 8, 75);
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
