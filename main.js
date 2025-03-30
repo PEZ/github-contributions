@@ -57,19 +57,29 @@ async function main() {
   };
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  const monthKeys = Object.keys(months);
-  let row = 0;
-  const rowCount = monthKeys.length;
+  const monthKeys = Object.keys(months).sort();
   const boxes = [];
   let outline = null;
 
+  let currentZOffset = 0;
+  const monthGap = 0.2;
+  let totalZSpan = 0;
+
   for (const month of monthKeys) {
     const days = months[month];
+    if (!days || days.length === 0) continue;
+
     const year = parseInt(month.split('-')[0]);
     const monthNum = parseInt(month.split('-')[1]) - 1;
 
     const firstDay = new Date(year, monthNum, 1);
     const startWeekday = firstDay.getDay();
+
+    let maxWeekIndex = 0;
+    const lastDayData = days[days.length - 1];
+    const lastDayOfMonthDate = lastDayData.date.getDate();
+    maxWeekIndex = Math.floor((startWeekday + lastDayOfMonthDate - 1) / 7);
+    const monthZSpan = maxWeekIndex + 1;
 
     days.forEach(day => {
       const height = Math.max(day.count * 0.1, 0.1);
@@ -78,10 +88,11 @@ async function main() {
       box.scale.set(0.9, height, 0.9);
 
       const dayOfMonth = day.date.getDate();
-      const weekday = new Date(day.date).getDay();
+      const weekday = day.date.getDay();
       const weekIndex = Math.floor((startWeekday + dayOfMonth - 1) / 7);
 
-      box.position.set(weekday, height / 2, row * 6 + weekIndex);
+      box.position.set(weekday, height / 2, currentZOffset + weekIndex);
+
       box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
       boxes.push(box);
       scene.add(box);
@@ -91,11 +102,15 @@ async function main() {
     const label = new SpriteText(labelText);
     label.color = 'white';
     label.textHeight = 1.2;
-    label.position.set(-1.5, 0.2, row * 6 + 1.5);
+
+    label.position.set(-1.5, 0.2, currentZOffset + maxWeekIndex * 0.5);
     scene.add(label);
 
-    row++;
+    currentZOffset += monthZSpan + monthGap;
   }
+
+   totalZSpan = currentZOffset > 0 ? currentZOffset - monthGap : 0;
+
 
   const tooltip = document.createElement('div');
   tooltip.id = 'tooltip';
@@ -107,22 +122,19 @@ async function main() {
   document.body.appendChild(toggle);
 
   let soundEnabled = false;
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let lastPlayedTime = 0;
+
   toggle.addEventListener('click', async () => {
-    await audioCtx.resume();
+    if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+    }
     soundEnabled = !soundEnabled;
     toggle.textContent = soundEnabled ? '🔔 Sound On' : '🔇 Enable Sound';
   });
 
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  let mouseX = 0;
-  let mouseY = 0;
-
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  let lastPlayedTime = 0;
-
   function playTone(count) {
-    if (!soundEnabled) return;
+    if (!soundEnabled || audioCtx.state !== 'running') return;
 
     const now = audioCtx.currentTime;
     if (now - lastPlayedTime < 0.1) return;
@@ -135,7 +147,7 @@ async function main() {
     const freq = baseFreq + (count / 60) * (maxFreq - baseFreq);
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.setValueAtTime(Math.max(baseFreq, freq), now);
 
     gain.gain.setValueAtTime(0.2, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
@@ -147,6 +159,11 @@ async function main() {
     osc.stop(now + 0.6);
   }
 
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let mouseX = 0;
+  let mouseY = 0;
+
   window.addEventListener('mousemove', event => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -154,9 +171,15 @@ async function main() {
     mouseY = event.clientY;
   });
 
-  const centerZ = rowCount * 0.5;
-  const centerY = 0;
-  const centerX = 4;
+  window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  const centerZ = totalZSpan / 2;
+  const centerY = 5;
+  const centerX = 3;
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
@@ -170,6 +193,8 @@ async function main() {
 
     if (outline) {
       scene.remove(outline);
+      outline.geometry.dispose();
+      outline.material.dispose();
       outline = null;
     }
 
@@ -180,19 +205,22 @@ async function main() {
       if (lastHovered !== obj) {
         playTone(userData.count);
         lastHovered = obj;
+
+        // Create outline for hover effect
+        const edges = new THREE.EdgesGeometry(obj.geometry);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+        outline = new THREE.LineSegments(edges, lineMat);
+        outline.position.copy(obj.position);
+        outline.scale.copy(obj.scale);
+        scene.add(outline);
       }
+
 
       tooltip.textContent = `${userData.date}: ${userData.count}`;
       tooltip.style.left = `${mouseX + 10}px`;
       tooltip.style.top = `${mouseY + 10}px`;
       tooltip.style.display = 'block';
 
-      const edges = new THREE.EdgesGeometry(obj.geometry);
-      const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
-      outline = new THREE.LineSegments(edges, lineMat);
-      outline.position.copy(obj.position);
-      outline.scale.copy(obj.scale);
-      scene.add(outline);
     } else {
       tooltip.style.display = 'none';
       lastHovered = null;
@@ -204,4 +232,4 @@ async function main() {
   animate();
 }
 
-main();
+main().catch(console.error);
