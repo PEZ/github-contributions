@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
-import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import SpriteText from 'three-spritetext';
 
 const dataUrl = 'pez-github-contributions-2024-03-29.json';
 
@@ -64,35 +63,6 @@ async function main() {
   const boxes = [];
   let outline = null;
 
-  const fontLoader = new FontLoader();
-  const font = await new Promise((resolve, reject) => {
-    fontLoader.load(
-      'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-      resolve,
-      undefined,
-      reject
-    );
-  });
-
-  function createTextSprite(text) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    const fontSize = 60;
-    canvas.width = 256;
-    canvas.height = 64;
-    context.font = `${fontSize}px Helvetica`;
-    context.fillStyle = '#ffffff';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture });
-    const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(4, 1, 1); // Adjust size here
-    return sprite;
-  }
-
   for (const month of monthKeys) {
     const days = months[month];
     const year = parseInt(month.split('-')[0]);
@@ -117,10 +87,12 @@ async function main() {
       scene.add(box);
     });
 
-    const text = new Date(year, monthNum).toLocaleString('default', { month: 'short' });
-    const textSprite = createTextSprite(text);
-    textSprite.position.set(col * 8 + 3, 0.1, -1.5); // Position above ground
-    scene.add(textSprite);
+    const labelText = new Date(year, monthNum).toLocaleString('default', { month: 'short' });
+    const label = new SpriteText(labelText);
+    label.color = 'white';
+    label.textHeight = 1.2;
+    label.position.set(col * 8 + 3.5, 0.2, -2);
+    scene.add(label);
 
     col++;
   }
