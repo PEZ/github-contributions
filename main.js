@@ -56,22 +56,25 @@ async function main() {
   };
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  let col = 0;
+  const monthKeys = Object.keys(months).reverse();
+let col = 0;
   const columnCount = Object.keys(months).length;
   const boxes = [];
   let outline = null;
 
-  for (const [month, days] of Object.entries(months)) {
+  for (const month of monthKeys) {
+    const days = months[month];
     const firstDay = days.find(d => d.date.getDate() === 1);
     const weekdayOffset = firstDay ? firstDay.date.getDay() : 0;
+    const shift = -weekdayOffset; // Align to previous month's weekday start // shift direction for alignment
 
     days.forEach(day => {
       const height = Math.max(day.count * 0.1, 0.1);
       const mat = new THREE.MeshLambertMaterial({ color: getColor(day.count) });
       const box = new THREE.Mesh(boxGeo, mat);
       box.scale.set(0.9, height, 0.9);
-      const z = (day.date.getDate() - 1 + weekdayOffset) * 1.0;
-      box.position.set(col * 1.0, height / 2, z);
+      const z = (day.date.getDate() - 1 + shift) * 1.0;
+      box.position.set(z, height / 2, col * 1.0);
       box.userData = { date: day.date.toISOString().slice(0, 10), count: day.count };
       boxes.push(box);
       scene.add(box);
@@ -153,9 +156,9 @@ async function main() {
     mouseY = event.clientY;
   });
 
-  const centerX = ((columnCount - 1) * 1.0) / 2;
+  const centerZ = columnCount * 0.5;
   const centerY = 0;
-  const centerZ = 31 / 2;
+  const centerX = 15;
   controls.target.set(centerX, centerY, centerZ);
   controls.update();
 
