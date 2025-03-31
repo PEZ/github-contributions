@@ -1,9 +1,11 @@
 # A Vibe Coded GitHub Contributions Graph
 
-A reimagined take on the GitHub contributions heatmap — turning raw commit history into a spatial, interactive, and musical timeline of code.
+A playful take on the GitHub contributions heatmap — turning weekly commit stats into a spatial, interactive, and musical timeline of code.
 
 > Built by ChatGPT
 > Directed by PEZ, a human with strong vibes
+
+**Try it out live:** [https://pez.github.io/github-contributions/](https://pez.github.io/github-contributions/)
 
 ---
 
@@ -63,3 +65,4 @@ If you're just here to see it run:
 npm install
 npm run dev
 ```
+
